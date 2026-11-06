@@ -1,0 +1,100 @@
+{
+  "id": "./index.html",
+  "name": "架空株ミニ市場",
+  "short_name": "架空株",
+  "description": "架空の企業で遊ぶ株式市場シミュレーター（スマホ版）。注文・信用取引・チャートまで、通信なしで遊べます。",
+  "lang": "ja",
+  "dir": "ltr",
+  "categories": [
+    "finance",
+    "games"
+  ],
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#14556f",
+  "theme_color": "#14556f",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "チャート",
+      "short_name": "チャート",
+      "url": "./index.html#chart",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "注文",
+      "short_name": "注文",
+      "url": "./index.html#order",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "資産",
+      "short_name": "資産",
+      "url": "./index.html#mypage",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icons/shot-market.png",
+      "sizes": "1079x2258",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "マーケット"
+    },
+    {
+      "src": "icons/shot-chart.png",
+      "sizes": "1079x2258",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "チャート"
+    },
+    {
+      "src": "icons/shot-mypage.png",
+      "sizes": "1079x2258",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "資産"
+    }
+  ]
+}
