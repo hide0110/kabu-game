@@ -2269,7 +2269,7 @@ html, body { overscroll-behavior-y: none; }
         <li><strong>注文のしくみ：</strong>通常の成行・指値注文は当日限りで、大引けまでに約定しないと失効します。成行は立会中の現在値で執行し、指値は買いが「現在値≦指値」、売りが「現在値≧指値」で約定します。買い注文は約定前から代金分の買付余力を確保します。逆指値は指定価格に到達すると成行へ切り替わり、取消まで有効です。IFDは第1注文の全数量約定後、同じ営業日から第2注文の決済指値が有効になります。OCOは利確指値・損切り逆指値を同時に出し、片方が成立すると他方を自動取消します。逆指値は現物・信用の新規注文と返済注文に対応します。IFDは現物買いまたは信用新規建て、OCOは現物売りまたは信用返済に対応します。手数料は0円です。</li>
         <li><strong>ストップ高・ストップ安の注文制限：</strong>ストップ高の銘柄は買い注文ができず、すでに出した買い注文も約定しません。ストップ安の銘柄は売り注文ができず、売り注文も約定しません（売り手・買い手がいない状況を簡単に再現）。張り付きが外れると、約定が再開します。</li>
         <li><strong>差金決済の禁止：</strong>現物取引でも、同じ営業日に同じ銘柄を「買って売る」「売って買い戻す」日計り取引はできます。ただし、その日に売却した同じ銘柄の代金を、同じ銘柄の買付に使うこと（差金決済）はできません。同じ銘柄の買い戻し・買い増しは、売却代金を除いた自己資金の買付余力の範囲で行えます。他の銘柄の買付には、売却代金をそのまま使えます。</li>
-        <li><strong>信用取引：</strong>制度信用（6か月）と一般信用（この市場では無期限モデル）を選べます。信用買い（買建）・信用売り（売建）が可能で、最大レバレッジは3.3倍です。新規建時の必要保証金は建玉金額の1/3.3、保証金率（現金保証金から信用評価損を控除し、建玉評価額で除した値）が大引け時点で20%を下回ると追証が発生します（含み益は加算しません）。追証は自己資金の入金、借入、または建玉返済で解消でき、発生日から2営業日後の後場寄付までに解消されない場合は強制決済します。制度信用の返済期限は120営業日（6か月の近似）です。</li>
+        <li><strong>信用取引：</strong>制度信用（6か月）と一般信用（この市場では無期限モデル）を選べます。信用買い（買建）・信用売り（売建）が可能で、最大レバレッジは3.3倍です。新規建時の必要保証金は建玉金額の1/3.3、保証金率（現金保証金に信用の評価損益を加え、建玉金額〔約定代金〕で除した値）が大引け時点で20%を下回ると追証が発生します（含み益は保証金に加算されます。ただし、新規建に使える余力には含み益を含めません）。追証は自己資金の入金、借入、または建玉返済で解消でき、発生日から2営業日後の後場寄付までに解消されない場合は強制決済します。制度信用の返済期限は120営業日（6か月の近似）です。</li>
         <li><strong>追証のための借入：</strong>追証が発生している間のみ借入できます。借入上限は初期資金の2倍（最大2,000万円）。借入金利はその日の政策金利＋3.5%／年で、1営業日ごとに未払利息へ加算します。返済時は未払利息から先に充当し、その後に元本を減らします。借入金は口座現金・保証金に加算されますが、合計資産・評価損益では借入元本と未払利息を負債として差し引きます。</li>
         <li><strong>信用取引の費用（シミュレーション上の固定値）：</strong>制度信用は買方金利年率2.8%、売方貸株料年率1.1%。一般信用は買方金利年率3.0%、売方貸株料年率1.5%。営業日ごとに概算費用を現金から差し引きます。実際の証券会社の金利・貸株料・逆日歩・品貸料とは異なり、逆日歩、配当・権利処理、現引・現渡は再現しません。</li>
         <li><strong>時価総額：</strong>株価 × 発行済株式数（自己株式を除く）で、株価に合わせてリアルタイムに変わります。ヒートマップの面積も同じように変わり、大小が入れ替わることがあります。</li>
@@ -3726,11 +3726,13 @@ class Account {
     return this.cash + lossAdj - this.loanAccruedInterest - this.reservedBuy() - this.creditLockedMargin() - this.creditReservedOpenMargin();
   }
   power(market) { return this.creditFreeMargin(market); } // 現物買付余力。信用建玉に必要な保証金を控除
+  creditBasis() { return this.creditPositions.reduce((s, p) => s + p.entryPrice * p.qty, 0); } // 建玉金額（約定代金）
   creditExposure(market) { return this.creditPositions.reduce((s, p) => { const k = market.byCode.get(p.code); return s + (k ? k.price * p.qty : 0); }, 0); }
   creditUnrealized(market) { return this.creditPositions.reduce((s, p) => { const k = market.byCode.get(p.code); if (!k) return s; return s + (p.direction === 'long' ? (k.price - p.entryPrice) : (p.entryPrice - k.price)) * p.qty; }, 0); }
   creditMetrics(market) {
-    const exposure = this.creditExposure(market), unrealized = this.creditUnrealized(market), equity = this.cash + Math.min(0, unrealized) - this.loanAccruedInterest;
-    return { exposure, unrealized, equity, maintenance: exposure * CREDIT_MAINTENANCE_RATE, ratio: exposure > 0 ? equity / exposure : null, requiredDeposit: Math.max(0, Math.ceil(exposure * CREDIT_MAINTENANCE_RATE - equity)) };
+    const exposure = this.creditExposure(market), unrealized = this.creditUnrealized(market), basis = this.creditBasis();
+    const equity = this.cash + unrealized - this.loanAccruedInterest; // 含み益・含み損とも保証金に反映
+    return { exposure, basis, unrealized, equity, maintenance: basis * CREDIT_MAINTENANCE_RATE, ratio: basis > 0 ? equity / basis : null, requiredDeposit: Math.max(0, Math.ceil(basis * CREDIT_MAINTENANCE_RATE - equity)) };
   }
   creditReservedCloseQty(positionId) {
     let total=0; const seen=new Set();
@@ -6421,9 +6423,9 @@ class Account {
       if(!r.ok){toast(r.error,true);return;}
       const ratio=account.creditMetrics(market).ratio;
       const afterCash=account.cash-amount;
-      const afterEquity=afterCash+Math.min(0,account.creditUnrealized(market));
-      const exposure=account.creditExposure(market);
-      const afterRatio=exposure>0?afterEquity/exposure:null;
+      const afterEquity=afterCash+account.creditUnrealized(market);
+      const basis=account.creditBasis();
+      const afterRatio=basis>0?afterEquity/basis:null;
       $('credit-loan-repay-warning-text').textContent='返済額 '+yen(amount)+' のうち、未払利息 '+yen(r.interestPart)+' を先に返済し、元本 '+yen(r.principalPart)+' に充当します。返済すると口座現金と保証金余力が減少します。現在の保証金率 '+(ratio==null?'—':(ratio*100).toFixed(2)+'%')+' に対し、返済後の概算保証金率は '+(afterRatio==null?'—':(afterRatio*100).toFixed(2)+'%')+' です。20%を下回る場合、追証が新たに発生または再発する可能性があります。借入金利は政策金利＋3.5%／年で日々発生します。返済を実行しますか？';
       $('credit-loan-repay-warning').hidden=false;
     });
