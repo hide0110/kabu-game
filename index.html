@@ -1226,6 +1226,63 @@ html, body { overscroll-behavior-y: none; }
 .mob-install { grid-column: 1 / -1; min-height: 52px; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: #fff; font: 700 14px var(--font-body); }
 .mob-install[hidden] { display: none; }
 
+/* ================= v14：注文画面（信用）の崩れ対策。幅が狭い・文字が大きい端末でも、はみ出さない ================= */
+#page-order .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+#page-order .seg label { min-width: 0; }
+#page-order .seg span { white-space: normal; text-align: center; padding-inline: 4px; line-height: 1.25; overflow-wrap: anywhere; }
+#page-order .sidebuy-wrap, #page-order .seg.mob-seg-auto { width: auto; }
+#page-order .credit-controls, #page-order .credit-controls > *, #page-order .ogrid > * { min-width: 0; }
+#page-order .credit-controls { gap: 8px; padding: 10px; }
+#page-order .credit-controls .ogrid { gap: 8px; }
+#page-order .credit-hint { font-size: 12px; line-height: 1.45; margin: 0; }
+#page-order .credit-controls #credit-open-note { display: none; }
+#page-order .credit-controls.mob-note-open #credit-open-note { display: block; }
+.mob-cnote { align-self: start; min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg); color: var(--accent); font-size: 12.5px; }
+/* 呼値・値幅などの小さな表：2列×2段にして、数字を折り返さない */
+#page-order .facts { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 4px 12px !important; }
+#page-order .facts > div:nth-child(6) { grid-column: auto; }
+#page-order .facts dd { white-space: nowrap; font-size: 13px; }
+#page-order .facts dt { font-size: 11.5px; }
+#page-order .stepper { min-width: 0; }
+#page-order .stepper .num { min-width: 0; }
+#page-order .oform { overflow-x: clip; }
+
+/* ================= v14：市場の設定（タブ＋項目ごとの開閉） ================= */
+#st-sub, #st-tgt { display: none; }
+body[data-page="settings"] #st-sub { display: flex; }
+#st-sub button { padding-inline: 4px; font-size: 13.5px; }
+body[data-page="settings"][data-stv="mkt"] #st-tgt, body[data-page="settings"][data-stv="corp"] #st-tgt, body[data-page="settings"][data-stv="rate"] #st-tgt { display: flex; }
+.st-tgt { align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 4px 12px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 13px; margin: 0 -10px; }
+.st-tgt b { font-weight: 700; }
+.st-tgt button { min-height: 32px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 16px; background: var(--bg); color: var(--accent); font-size: 12.5px; }
+body[data-page="settings"][data-stv="stock"] #settings-panel { display: none; }
+body[data-page="settings"] #settings-panel .sethead { display: none; }
+body[data-page="settings"] #page-settings [data-stv]:not([data-stv="stock"]) { }
+body[data-stv="stock"] #page-settings .setgrid > .cat,
+body[data-stv="mkt"] #page-settings .setgrid > .cat:not([data-stv="mkt"]),
+body[data-stv="fund"] #page-settings .setgrid > .cat:not([data-stv="fund"]),
+body[data-stv="corp"] #page-settings .setgrid > .cat:not([data-stv="corp"]),
+body[data-stv="rate"] #page-settings .setgrid > .cat:not([data-stv="rate"]),
+body[data-stv="save"] #page-settings .setgrid > .cat:not([data-stv="save"]) { display: none; }
+body[data-stv="mkt"] #page-settings .settings-top, body[data-stv="fund"] #page-settings .settings-top, body[data-stv="corp"] #page-settings .settings-top,
+body[data-stv="rate"] #page-settings .settings-top, body[data-stv="save"] #page-settings .settings-top { display: none; }
+#page-settings .setpanel { padding: 0; border: 0; background: transparent; box-shadow: none; }
+#page-settings .cat { border: 0; padding: 0; background: transparent; gap: 8px; }
+.st-items { display: grid; gap: 8px; }
+.st-item { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.st-ih { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 0 14px; border: 0; background: transparent; color: var(--ink); font: 700 14.5px var(--font-body); text-align: left; }
+.st-ih i { color: var(--muted); font-style: normal; transition: transform .15s; }
+.st-item.open > .st-ih i { transform: rotate(180deg); }
+.st-item.open > .st-ih { border-bottom: 1px solid var(--line); color: var(--accent); }
+.st-ib { display: none; padding: 12px; gap: 10px; }
+.st-item.open > .st-ib { display: grid; }
+.st-ib > .fld, .st-ib > .act { border: 0; padding: 0; background: transparent; }
+.settings-top > .tcard { height: 270px; }
+.settings-top > .settings-mini { height: 300px; }
+body[data-page="settings"]:not([data-stv="save"]) section.rules { display: none; }
+#page-settings .cinfo { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+#page-settings .cinfo dd { overflow-wrap: anywhere; font-size: 13px; }
+
 </style>
 </head>
 <body>
@@ -3218,7 +3275,7 @@ class Market {
       const after=Math.max(0,Number(f.annualDividend)||0);
       const priceImpact=(outcome==='maintain')?0:dividendAnnouncementPriceImpact(before,after,payout);
       if (priceImpact!==0) k.jump+=priceImpact;
-      const outcomeLabel=outcome==='cut'?'減配':outcome==='noDividend'?'無配化':outcome==='raise'?(before<=0?'新規配当開始':'増配'):'維持';
+      const outcomeLabel=outcome==='cut'?'減配':outcome==='noDividend'?'無配化':outcome==='raise'?(before<=0?'新規配当開始':'増配（'+Math.max(1,f.dividendRaiseStreak||1)+'期連続）'):'維持';
       const probabilityText='減配 '+probs.cut.toFixed(1)+'%／無配 '+probs.noDividend.toFixed(1)+'%／維持 '+probs.maintain.toFixed(1)+'%／増配 '+probs.raise.toFixed(1)+'%';
       const changeText=before.toFixed(1)+'円 → '+after.toFixed(1)+'円／株';
       const impactText=priceImpact!==0?' 翌営業日の寄付価格に約 '+(Math.expm1(priceImpact)*100).toFixed(2)+'%の情報効果を反映。':'';
@@ -3261,7 +3318,7 @@ class Market {
     k.lastDividendAction={kind,amount,old,day:this.day,priceImpact};
     const record={code:k.code,name:k.name,kind,amount,old,day:this.day,specialExDay:f.specialExDay||null,priceImpact};
     this.dividendActions.unshift(record); if(this.dividendActions.length>100) this.dividendActions.pop();
-    const label=kind==='cut'?'減配':kind==='raise'?'増配':'特別配当';
+    const label=kind==='cut'?'減配':kind==='raise'?'増配（'+Math.max(1,f.dividendRaiseStreak||1)+'期連続）':'特別配当';
     const impactText=priceImpact!==0?' 翌営業日の寄付価格に配当変更の情報効果として約 '+(Math.expm1(priceImpact)*100).toFixed(2)+'%を反映します。':'';
     this.events.push({kind:'dividend',text:k.name+'：'+label+'を実施しました。'+(kind==='special'?'特別配当 '+amount.toFixed(1)+'円／株（第'+f.specialExDay+'営業日が仮想権利落ち日）。':'年間配当を '+old.toFixed(1)+'円から '+f.annualDividend.toFixed(1)+'円／株へ変更。')+impactText+' 次回変更は80営業日後から可能です。'});
     const dividendMove=old>0?Math.abs(f.annualDividend-old)/old:0;
@@ -6642,6 +6699,7 @@ class Account {
     const div=dividendTotalPerShare(f);
     let status=f.dividendStatus||(Math.max(0,f.annualDividend||0)<=0?'無配':'現状維持');
     if ((f.annualDividend||0)<=0) status='無配';
+    else if (status==='増配') status='増配（'+Math.max(1,f.dividendRaiseStreak||1)+'期連続）';
     return {
       per:k.price/Math.max(.01,f.eps||.01),
       pbr:k.price/Math.max(.01,f.bps||.01),
@@ -8404,6 +8462,103 @@ class Account {
 
     /* 4) 保存データがブラウザの掃除で消えにくいように、永続ストレージを依頼 */
     try { if (navigator.storage && navigator.storage.persist && /^https?:$/.test(location.protocol)) navigator.storage.persist(); } catch (_) { /* 何もしない */ }
+  })();
+
+  /* ---- 注文（信用）：長い文言を短くし、補足は「ルールを見る」で開く ---- */
+  (function () {
+    const set = (sel, t) => { const e = document.querySelector(sel); if (e) e.textContent = t; };
+    set('input[name="credit-type"][value="system"] + span', '制度（6か月）');
+    set('input[name="credit-type"][value="general"] + span', '一般（無期限）');
+    const lim = $('of-limit'); if (lim && lim.previousElementSibling) lim.previousElementSibling.textContent = '値幅制限';
+    const cc = $('credit-controls'), note = $('credit-open-note');
+    if (cc && note) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'mob-cnote'; b.textContent = '信用のルールを見る'; b.setAttribute('aria-expanded', 'false');
+      b.addEventListener('click', () => { const o = cc.classList.toggle('mob-note-open'); b.setAttribute('aria-expanded', String(o)); b.textContent = o ? 'ルールを閉じる' : '信用のルールを見る'; });
+      cc.appendChild(b); cc.appendChild(note);   // ボタンの下に補足を置く
+    }
+  })();
+
+  /* ---- 市場の設定：6つのタブ＋項目ごとの開閉。1画面で操作できるようにする ---- */
+  (function () {
+    const page = $('page-settings'), panel = $('settings-panel');
+    const top = page && page.querySelector('.settings-top');
+    if (!page || !panel || !top) return;
+    const cats = [...panel.querySelectorAll('.setgrid > .cat')];
+    if (cats.length < 5) return;
+    const TABS = [['stock', '銘柄'], ['mkt', '市場'], ['fund', '資金'], ['corp', '企業'], ['rate', '評価'], ['save', '保存']];
+    const SV = TABS.map((t) => t[0]);
+    top.dataset.stv = 'stock';
+    ['mkt', 'fund', 'corp', 'rate', 'save'].forEach((v, i) => { cats[i].dataset.stv = v; });
+    let sv = 'stock';
+    const openOf = {};
+
+    function build(cat, items) {
+      const h3 = cat.querySelector(':scope > h3'); if (h3) h3.classList.add('mob-hide');
+      const wrap = document.createElement('div'); wrap.className = 'st-items';
+      cat.insertBefore(wrap, h3 ? h3.nextSibling : cat.firstChild);
+      items.forEach((it, n) => {
+        const nodes = it.nodes.filter(Boolean); if (!nodes.length) return;
+        const box = document.createElement('section'); box.className = 'st-item';
+        const id = 'st-' + cat.dataset.stv + '-' + n;
+        const hd = document.createElement('button'); hd.type = 'button'; hd.className = 'st-ih'; hd.id = id + '-h'; hd.setAttribute('aria-controls', id);
+        hd.innerHTML = '<span></span><i aria-hidden="true">▾</i>'; hd.firstChild.textContent = it.title;
+        const bd = document.createElement('div'); bd.className = 'st-ib'; bd.id = id; bd.setAttribute('role', 'region'); bd.setAttribute('aria-labelledby', hd.id);
+        nodes.forEach((nd) => bd.appendChild(nd));
+        box.appendChild(hd); box.appendChild(bd); wrap.appendChild(box);
+        hd.addEventListener('click', () => {
+          const o = !box.classList.contains('open');
+          wrap.querySelectorAll('.st-item.open').forEach((x) => { x.classList.remove('open'); x.querySelector('.st-ih').setAttribute('aria-expanded', 'false'); });
+          if (o) { box.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); openOf[cat.dataset.stv] = n; box.scrollIntoView({ block: 'nearest' }); } else openOf[cat.dataset.stv] = -1;
+        });
+        hd.setAttribute('aria-expanded', 'false');
+        if (n === 0) { box.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); }
+      });
+    }
+    const kids = (cat) => [...cat.children].filter((c) => c.tagName !== 'H3' && !c.classList.contains('st-items'));
+    let k = kids(cats[0]);
+    build(cats[0], [{ title: '市場の状態（値動きの荒さ）', nodes: [k[0]] }, { title: '市場全体の需給バランス', nodes: [k[1]] }, { title: '政策金利', nodes: [k[2]] }, { title: '市場のつくり直し（シード値）', nodes: [k[3]] }, { title: '相場デバッグ（選んでいる企業）', nodes: [k[4]] }]);
+    k = kids(cats[1]);
+    build(cats[1], [{ title: '初期資金・リセット', nodes: [k[0]] }, { title: '毎月の自動入金', nodes: [k[1]] }, { title: '税金の設定（特定口座）', nodes: [k[2]] }]);
+    const acts = cats[2].querySelector('.acts'), act = acts ? [...acts.children] : [];
+    k = kids(cats[2]).filter((c) => c !== acts);
+    build(cats[2], [{ title: '企業の基本情報', nodes: [k[0]] }, { title: '① 株式分割・併合・償却', nodes: [act[0]] }, { title: '② 自社株買い・株式発行', nodes: [act[1]] }, { title: '③ 配当金の変更', nodes: [act[2]] }, { title: '予約・実施の一覧と財源規制', nodes: k.slice(1) }]);
+    if (acts) acts.classList.add('mob-hide');
+    k = kids(cats[3]);
+    build(cats[3], [{ title: 'ランクと目標価格', nodes: k.slice(0, 4) }, { title: '設定履歴', nodes: k.slice(4) }]);
+    k = kids(cats[4]);
+    build(cats[4], [{ title: '自動保存・バックアップ', nodes: k }]);
+
+    const nav = document.createElement('nav');
+    nav.className = 'mp-sub'; nav.id = 'st-sub'; nav.setAttribute('role', 'tablist'); nav.setAttribute('aria-label', '市場の設定の分類');
+    nav.innerHTML = TABS.map((t) => '<button type="button" role="tab" data-v="' + t[0] + '" id="st-tab-' + t[0] + '">' + t[1] + '</button>').join('');
+    page.parentNode.insertBefore(nav, page);
+
+    const tgt = document.createElement('div'); tgt.className = 'st-tgt'; tgt.id = 'st-tgt';
+    tgt.innerHTML = '<span>対象銘柄：<b></b></span><button type="button">変更</button>';
+    page.parentNode.insertBefore(tgt, page);
+    const tb = tgt.querySelector('b'), src = $('set-tgt');
+    const syncTgt = () => { tb.textContent = src ? (src.textContent || '').trim() : ''; };
+    if (src) new MutationObserver(syncTgt).observe(src, { childList: true, characterData: true, subtree: true });
+    syncTgt();
+    tgt.querySelector('button').addEventListener('click', () => setSv('stock', true));
+
+    function setSv(v, animate) {
+      const prev = SV.indexOf(sv), next = SV.indexOf(v);
+      if (next < 0) return;
+      sv = v; document.body.dataset.stv = v;
+      nav.querySelectorAll('[data-v]').forEach((b) => { const on = b.dataset.v === v; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+      const el = v === 'stock' ? top : cats[next - 1];
+      if (animate && prev !== next) { el.classList.remove('mob-in-l', 'mob-in-r'); void el.offsetWidth; el.classList.add(next > prev ? 'mob-in-l' : 'mob-in-r'); setTimeout(() => el.classList.remove('mob-in-l', 'mob-in-r'), 260); }
+      try { window.scrollTo(0, 0); } catch (_) { /* 何もしない */ }
+    }
+    nav.addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) setSv(b.dataset.v, true); });
+    nav.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return;
+      const n = SV[SV.indexOf(sv) + d]; if (n) { e.preventDefault(); setSv(n, true); const b = $('st-tab-' + n); if (b) b.focus(); }
+    });
+    setSv('stock', false);
+    SUBS.settings = { list: SV, get: () => sv, set: setSv };
   })();
 })();
 
