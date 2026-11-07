@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#14556f">
+<style id="boot-splash-css">
+#boot-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#14556f;color:#fff;font:600 15px/1.4 system-ui,-apple-system,"Noto Sans JP",sans-serif;transition:opacity .25s ease}
+#boot-splash.off{opacity:0;pointer-events:none}
+#boot-splash b{font-size:22px;letter-spacing:.08em}
+#boot-splash .sp{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.28);border-top-color:#fff;animation:bsp .8s linear infinite}
+#boot-splash small{opacity:.8;font-weight:500;font-size:13px;min-height:1.4em}
+@keyframes bsp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#boot-splash .sp{animation-duration:2.4s}}
+</style>
+
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -1283,9 +1293,14 @@ body[data-page="settings"]:not([data-stv="save"]) section.rules { display: none;
 #page-settings .cinfo { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 #page-settings .cinfo dd { overflow-wrap: anywhere; font-size: 13px; }
 
+/* v17：画面の外にある行は描画を省く（銘柄が多い一覧のカクつき対策） */
+#mk-list > li { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+
 </style>
 </head>
 <body>
+<div id="boot-splash" role="status" aria-live="polite"><b>架空株</b><div class="sp" aria-hidden="true"></div><small id="boot-stage">市場を準備しています…</small></div>
+
 <main class="wrap">
   <div class="head">
     <div>
@@ -2329,6 +2344,8 @@ body[data-page="settings"]:not([data-stv="save"]) section.rules { display: none;
         <li><strong>信用取引：</strong>制度信用（6か月）と一般信用（この市場では無期限モデル）を選べます。信用買い（買建）・信用売り（売建）が可能で、最大レバレッジは3.3倍です。新規建時の必要保証金は建玉金額の1/3.3、保証金率（現金保証金に信用の評価損益を加え、建玉金額〔約定代金〕で除した値）が大引け時点で20%を下回ると追証が発生します（含み益は保証金に加算されます。ただし、新規建に使える余力には含み益を含めません）。追証は自己資金の入金、借入、または建玉返済で解消でき、発生日から2営業日後の後場寄付までに解消されない場合は強制決済します。制度信用の返済期限は120営業日（6か月の近似）です。</li>
         <li><strong>追証のための借入：</strong>追証が発生している間のみ借入できます。借入上限は初期資金の2倍（最大2,000万円）。借入金利はその日の政策金利＋3.5%／年で、1営業日ごとに未払利息へ加算します。返済時は未払利息から先に充当し、その後に元本を減らします。借入金は口座現金・保証金に加算されますが、合計資産・評価損益では借入元本と未払利息を負債として差し引きます。</li>
         <li><strong>信用取引の費用（シミュレーション上の固定値）：</strong>制度信用は買方金利年率2.8%、売方貸株料年率1.1%。一般信用は買方金利年率3.0%、売方貸株料年率1.5%。営業日ごとに概算費用を現金から差し引きます。実際の証券会社の金利・貸株料・逆日歩・品貸料とは異なり、逆日歩、配当・権利処理、現引・現渡は再現しません。</li>
+        <li><strong>流動性（約定のしかた）：</strong>注文は、その時に市場で成立している出来高の一部ずつ約定します。最初に取れるのは1日の平均出来高の0.2%ほど、その後は出来高の25%までです。大きな注文は、数分〜数十分かけて「一部約定」を繰り返します。買えば約定価格が不利になり、株価も数分かけて動きます（影響は、注文が大きいほど、変動の大きい銘柄ほど強くなります）。大引けの約定は、平均出来高の10%までです。残りは当日限りの注文なら失効します。</li>
+        <li><strong>保有割合の上限：</strong>現物・信用買いを合わせた保有株数が、発行済株式数（自己株式を除く）の1/3を超える買付はできません（公開買付規制の簡易版）。5%以上になると、大量保有報告の対象になった旨をお知らせします。</li>
         <li><strong>時価総額：</strong>株価 × 発行済株式数（自己株式を除く）で、株価に合わせてリアルタイムに変わります。ヒートマップの面積も同じように変わり、大小が入れ替わることがあります。</li>
         <li><strong>税金（特定口座）：</strong>譲渡益に対する税率は20.315%です。「源泉徴収あり」では、シミュレーション開始からの通算実現損益をもとに税額を現金から控除し、通算損益が減少した場合は差額を還付します。「源泉徴収なし」では現金から控除せず、概算税額を表示します。税額計算はゲーム内の通算期間による簡略化で、実際の年単位の特定口座計算、配当との損益通算、繰越控除などは再現しません。この画面では便宜上いつでも切替できますが、実際の源泉徴収の選択は年単位です。</li>
         <li><strong>格付け・目標株価：</strong>「市場の設定」のDでランクと目標価格を選び、「設定」を押すと反映されます。値動きに、目標価格へ向かう偏りが加わります（1日の補正の合計は、大型株で±2%、中小型株で±5%まで）。レーティング履歴は銘柄ごとに直近2回分を表示します。</li>
@@ -2560,11 +2577,25 @@ function rateSens(k) {
 const SIM_START_DATE = new Date(Date.UTC(2026, 0, 5)); // 仮想市場の開始日（月曜日）
 function hashUnit(s) { let h=2166136261; for (let i=0;i<String(s).length;i++) { h ^= String(s).charCodeAt(i); h = Math.imul(h,16777619); } return (h>>>0)/4294967295; }
 function clamp(v,lo,hi) { return Math.max(lo,Math.min(hi,v)); }
-function addBusinessDays(date, n) { const d=new Date(date); const dir=n>=0?1:-1; let left=Math.abs(n); while(left>0) { d.setUTCDate(d.getUTCDate()+dir); const w=d.getUTCDay(); if(w!==0&&w!==6) left--; } return d; }
+const _DAYMS=86400000;
+function _wdG(n) { const m=n+3, q=Math.floor(m/7), r=m-q*7; return q*5+Math.min(r+1,5); } // 日番号n以前の平日の数
+function _wdIs(n) { const r=((n+3)%7+7)%7; return r<5; }
+function _wdNth(T) { const q=Math.floor((T-1)/5), r=T-1-q*5; return q*7+r-3; } // 平日がT番目になる日番号
+function addBusinessDays(date, n) {
+  const t=+date; if(n===0||t%_DAYMS!==0) { // 通常は通らない（元の方式のまま）
+    const d=new Date(date); const dir=n>=0?1:-1; let left=Math.abs(n); while(left>0) { d.setUTCDate(d.getUTCDate()+dir); const w=d.getUTCDay(); if(w!==0&&w!==6) left--; } return d; }
+  const dn=t/_DAYMS; const T=n>0?_wdG(dn)+n:_wdG(dn)-(_wdIs(dn)?1:0)-(-n)+1;
+  return new Date(_wdNth(T)*_DAYMS);
+}
 function simDateForDay(day) { return addBusinessDays(SIM_START_DATE,Math.max(0,day-1)); }
 function lastBusinessDayOfMonth(year,month) { const d=new Date(Date.UTC(year,month,0)); while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()-1); return d; }
 function exDateForMonth(year,month) { return addBusinessDays(lastBusinessDayOfMonth(year,month),-2); }
-function businessDaysBetween(a,b) { if (+a===+b) return 0; const dir=+b>+a?1:-1; let d=new Date(a),n=0; while((dir>0 && +d<+b)||(dir<0 && +d>+b)) { d.setUTCDate(d.getUTCDate()+dir); const w=d.getUTCDay(); if(w!==0&&w!==6) n+=dir; } return n; }
+function businessDaysBetween(a,b) {
+  if (+a===+b) return 0;
+  if (+a%_DAYMS!==0||+b%_DAYMS!==0) { const dir=+b>+a?1:-1; let d=new Date(a),n=0; while((dir>0 && +d<+b)||(dir<0 && +d>+b)) { d.setUTCDate(d.getUTCDate()+dir); const w=d.getUTCDay(); if(w!==0&&w!==6) n+=dir; } return n; }
+  const x=+a/_DAYMS, y=+b/_DAYMS;
+  return y>x ? _wdG(y)-_wdG(x) : _wdG(y)-_wdG(x)+(_wdIs(x)?1:0)-(_wdIs(y)?1:0);
+}
 function dateText(d) { return d ? d.getUTCFullYear()+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0') : '—'; }
 function shortDateText(d) { return d ? String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0') : '—'; }
 function dateLabelForDay(day) { return dateText(simDateForDay(day)); }
@@ -2855,6 +2886,7 @@ class Stock {
     } else {
       let ret = this.beta * rM + this.g * (rG + rS) + this.kRet * sc * this.eh * vm * z + this.bias
         + (this.marginPricePressure + this.dividendPricePressure) / SESSION_SEC;
+      if (this.impPend) { ret += this.impPend / 300; this.impPend *= 1 - 1 / 300; if (Math.abs(this.impPend) < 1e-7) this.impPend = 0; }
       if (this.rbLeft > 0) { ret += this.rb; this.rbLeft--; }
       if (r() < 0.6e-5) { // ニュースを想定した急な動き（1銘柄あたり約8日に1回）
         ret += (r() < 0.5 ? -1 : 1) * (this.d / 100) * (1.2 + r() * 1.2);
@@ -3666,6 +3698,19 @@ function treemap(items, W, H) {
 /* ======================= 取引（口座・注文・約定） ======================= */
 const yenText = (n) => Math.round(n).toLocaleString('ja-JP') + '円';
 const ORDER_LIMITS = { capitalMin: 100000, capitalMax: 10000000, capitalDefault: 3000000 };
+/* 流動性：注文は、その時に市場で成立している出来高の一部ずつ約定する */
+const LIQ = {
+  touch: 0.002,        // 最初に取れる板の厚み（1日の平均出来高の0.2%）
+  part: 0.25,          // 以降は、市場の出来高の25%まで取れる
+  closeAuction: 0.10,  // 大引けの約定（引け）は、1日の平均出来高の10%まで
+  impactK: 0.8,        // 価格への影響の強さ（日次変動率×√(出来高比)×K）
+  tob: 1 / 3,          // 保有割合がこれを超える買付は不可（公開買付規制の簡易版）
+  report: 0.05         // 大量保有報告の目安（5%）
+};
+function qtyLabel(o) {
+  const n = (x) => Number(x).toLocaleString('ja-JP');
+  return o.origQty && o.origQty !== o.qty ? n(o.qty) + '株（全' + n(o.origQty) + '株）' : n(o.qty) + '株';
+}
 const CREDIT_MAX_LEVERAGE = 3.3;
 const CREDIT_MAINTENANCE_RATE = 0.20;
 const CREDIT_SYSTEM_TERM_DAYS = 120; // 20営業日×6か月の近似
@@ -3783,6 +3828,57 @@ class Account {
     return this.cash + lossAdj - this.loanAccruedInterest - this.reservedBuy() - this.creditLockedMargin() - this.creditReservedOpenMargin();
   }
   power(market) { return this.creditFreeMargin(market); } // 現物買付余力。信用建玉に必要な保証金を控除
+  /* ---- 流動性：この1秒で約定できる数量と、価格への影響 ---- */
+  liqSlice(o, k, market) {
+    const key = market.day * 100000 + market.sec, last = market.phase === 'closed';
+    const cap = Math.max(UNIT, Math.floor(k.adv * LIQ.touch / UNIT) * UNIT);
+    if (k.liqK == null) { k.liqK = key; k.liqV = k.vol; k.liqB = cap; }
+    if (k.liqK !== key) {
+      let dv = k.vol - k.liqV; if (dv < 0) dv = k.vol;
+      k.liqV = k.vol; k.liqK = key;
+      k.liqB = Math.min(cap, (k.liqB || 0) + dv * LIQ.part);
+    }
+    const avail = Math.floor(((last ? Math.max(cap, k.adv * LIQ.closeAuction) : (k.liqB || 0)) ) / UNIT) * UNIT;
+    const q = Math.min(o.qty, avail);
+    if (q <= 0) return { q: 0, price: k.price };
+    k.liqB = Math.max(0, (k.liqB || 0) - q);
+    // 価格への影響：その日の累計の約定量に対して、√の形で効く（小さな注文はほとんど動かさない）
+    const sign = o.side === 'buy' ? 1 : -1, sig = Math.max(0.3, k.d || 1) / 100;
+    if (k.impDay !== market.day) { k.impDay = market.day; k.impBuy = 0; k.impSell = 0; }
+    const cum = sign > 0 ? (k.impBuy || 0) : (k.impSell || 0), adv = Math.max(1, k.adv);
+    const inc = LIQ.impactK * sig * (Math.sqrt((cum + q) / adv) - Math.sqrt(cum / adv));
+    if (sign > 0) k.impBuy = cum + q; else k.impSell = cum + q;
+    k.impPend = (k.impPend || 0) + sign * inc * 0.5;       // 株価そのものも、数分かけて動く
+    let price = k.round(k.price * (1 + sign * inc));         // 自分の約定は、その分だけ不利な値段になる
+    if (sign > 0) { price = Math.max(price, k.price); if (o.type === 'limit') price = Math.min(price, o.limit); }
+    else { price = Math.min(price, k.price); if (o.type === 'limit') price = Math.max(price, o.limit); }
+    price = Math.min(k.upper, Math.max(k.lower, price));
+    return { q, price };
+  }
+  /* ---- 保有割合：発行済株式数（自己株式を除く）の1/3までしか買えない ---- */
+  holdShares(k) {
+    let n = this.qty(k.code);
+    for (const p of this.creditPositions) if (p.code === k.code && p.direction === 'long') n += p.qty;
+    for (const o of this.orders) if (o.code === k.code && o.side === 'buy') n += o.qty;
+    for (const o of this.creditOrders) if (o.code === k.code && o.operation === 'open' && o.side === 'buy') n += o.qty;
+    return n;
+  }
+  holdLimit(k) { return Math.floor(k.outstanding * LIQ.tob / UNIT) * UNIT; }
+  maxMoreHold(k) { return Math.max(0, this.holdLimit(k) - this.holdShares(k)); }
+  holdMsg(k, qty) {
+    const mx = this.maxMoreHold(k);
+    return '保有割合が発行済株式数の1/3を超える買付は、公開買付（TOB）規制のため注文できません（あと ' + mx.toLocaleString('ja-JP') + '株まで）。';
+  }
+  noteHolding(k, market) {
+    this.reported = this.reported || {};
+    let n = this.qty(k.code);
+    for (const p of this.creditPositions) if (p.code === k.code && p.direction === 'long') n += p.qty;
+    const r = n / Math.max(1, k.outstanding);
+    if (r >= LIQ.report && !this.reported[k.code]) {
+      this.reported[k.code] = true;
+      this.events.push({ kind: 'info', text: k.name + '：保有割合が ' + (r * 100).toFixed(1) + '% になり、大量保有報告書（5%ルール）の提出対象になりました。' });
+    } else if (r < LIQ.report * 0.9) this.reported[k.code] = false;
+  }
   creditBasis() { return this.creditPositions.reduce((s, p) => s + p.entryPrice * p.qty, 0); } // 建玉金額（約定代金）
   creditExposure(market) { return this.creditPositions.reduce((s, p) => { const k = market.byCode.get(p.code); return s + (k ? k.price * p.qty : 0); }, 0); }
   creditUnrealized(market) { return this.creditPositions.reduce((s, p) => { const k = market.byCode.get(p.code); if (!k) return s; return s + (p.direction === 'long' ? (k.price - p.entryPrice) : (p.entryPrice - k.price)) * p.qty; }, 0); }
@@ -3981,6 +4077,7 @@ class Account {
     const rs = stopRestriction(k, spec.side);
     if (rs) errors.push(rs);
     const amount = qtyOk ? Math.round(ref * qty) : 0;
+    if (qtyOk && spec.side === 'buy' && qty > this.maxMoreHold(k)) errors.push(this.holdMsg(k, qty));
     if (qtyOk && spec.side === 'buy') {
       const pw = this.power(market);
       const locked = this.sameDaySales(spec.code, market);          // 同日・同銘柄の売却代金（買付に使えない）
@@ -4036,55 +4133,77 @@ class Account {
       if (k.stopLow) return '';
       if (o.type === 'limit' && price < o.limit) return '';
     }
-    return this.execute(o, price, market);
+    const L = this.liqSlice(o, k, market);
+    if (L.q <= 0) return '';
+    return this.execute(o, L.price, market, L.q);
   }
 
-  execute(o, price, market) {
-    const amount = Math.round(price * o.qty);
+  execute(o, price, market, fillQty) {
+    const total = o.qty, fq = (fillQty && fillQty < total) ? fillQty : total, full = fq >= total;
+    const amount = Math.round(price * fq);
     let pnl = null;
     if (o.side === 'buy') {
       const ownReserve = o.ocoGroup ? ((this.ocoGroups[o.ocoGroup] || {}).reserve || 0) : o.reserve;
       const others = this.reservedBuy() - ownReserve;
       const free = this.cash + Math.min(0, this.creditUnrealized(market)) - others - this.creditLockedMargin() - this.creditReservedOpenMargin();
-      const lockedSales = this.sameDaySales(o.code, market);       // 差金決済の禁止：同日・同銘柄の売却代金は使えない
-      if (amount > free - lockedSales + 1e-9) { this.finish(o, 'rejected', lockedSales > 0 ? '差金決済の禁止：同日に売却した同銘柄の代金は買付に使えないため取消' : '買付余力が足りなくなったため取消', market); return 'rejected'; }
+      if (amount > free + 1e-9) { this.finish(o, 'rejected', '買付余力が足りなくなったため取消', market); return 'rejected'; }
       this.cash -= amount;
       const h = this.holdings[o.code] || (this.holdings[o.code] = { qty: 0, cost: 0 });
-      h.qty += o.qty; h.cost += amount;
+      h.qty += fq; h.cost += amount;
     } else {
       const h = this.holdings[o.code];
-      if (!h || h.qty < o.qty) { this.finish(o, 'rejected', '保有株数が足りないため取消', market); return 'rejected'; }
-      const basis = (h.cost / h.qty) * o.qty;
+      if (!h || h.qty < fq) { this.finish(o, 'rejected', '保有株数が足りないため取消', market); return 'rejected'; }
+      const basis = (h.cost / h.qty) * fq;
       pnl = amount - basis;
-      h.cost -= basis; h.qty -= o.qty;
+      h.cost -= basis; h.qty -= fq;
       if (h.qty <= 0) delete this.holdings[o.code];
       this.cash += amount;
       this.realized += pnl;
       this.reconcileTax();
     }
-    const paired = o.ocoGroup ? this.orders.filter((x) => x.ocoGroup === o.ocoGroup && x !== o) : [];
-    this.orders = this.orders.filter((x) => x !== o);
-    o.status = 'filled';
-    const ex = { id: this.nextExec++, orderId: o.id, day: market.day, sec: market.sec, code: o.code, name: o.name, side: o.side, qty: o.qty, price, amount, pnl };
-    // OCOは片方が約定した時点で、もう一方を自動取消する。
-    paired.forEach((other) => this.finish(other, 'canceled', 'OCOのもう一方が約定したため自動取消', market));
-    if (o.ocoGroup) delete this.ocoGroups[o.ocoGroup];
+    const first = !o.filled;
+    o.origQty = o.origQty || total;
+    o.filled = (o.filled || 0) + fq; o.filledAmt = (o.filledAmt || 0) + amount;
+    if (first) {   // OCOは、片方が約定し始めた時点で、もう一方を自動取消する。
+      const paired = o.ocoGroup ? this.orders.filter((x) => x.ocoGroup === o.ocoGroup && x !== o) : [];
+      paired.forEach((other) => this.finish(other, 'canceled', 'OCOのもう一方が約定したため自動取消', market));
+    }
+    if (!full) {
+      const ratio = (total - fq) / total;
+      if (o.ocoGroup) { const g = this.ocoGroups[o.ocoGroup]; if (g && g.reserve) g.reserve *= ratio; } else o.reserve = (o.reserve || 0) * ratio;
+      o.qty = total - fq;
+    } else {
+      this.orders = this.orders.filter((x) => x !== o);
+      o.status = 'filled'; o.qty = o.origQty;
+      if (o.ocoGroup) delete this.ocoGroups[o.ocoGroup];
+    }
     // IFDの第1注文が全数量約定したら、第2注文は同じ営業日から有効にする。
-    if (o.advanced === 'ifd') {
+    if (full && o.advanced === 'ifd') {
       const child = { id:this.nextId++, day:market.day, sec:market.sec, code:o.code, name:o.name, side:'sell', type:'limit',
         limit:o.ifdExitPrice, stopPrice:null, qty:o.qty, reserve:0, status:'open', persistent:true,
         activeDay:market.day, activatedDay:market.day, advanced:'ifd-exit', parentId:o.id, ocoGroup:null };
       this.orders.push(child);
       this.events.push({ kind:'ifd', text:o.name + ' のIFD第1注文が成立しました。第2注文の売り指値 ' + yenText(o.ifdExitPrice) + ' は同じ営業日から有効になります。' });
     }
-    this.execs.unshift(ex);
+    // 約定履歴：同じ注文の分割約定は、1行にまとめる（平均価格・合計数量）
+    const last = this.execs[0], merge = last && last.orderId === o.id && last.day === market.day;
+    if (merge) { last.qty += fq; last.amount += amount; last.price = Math.round(last.amount / last.qty * 10) / 10; last.sec = market.sec; if (pnl != null) last.pnl = (last.pnl || 0) + pnl; }
+    else this.execs.unshift({ id: this.nextExec++, orderId: o.id, day: market.day, sec: market.sec, code: o.code, name: o.name, side: o.side, qty: fq, price, amount, pnl });
     if (this.execs.length > 1000) this.execs.pop();
     const d = this.byDay[market.day] || (this.byDay[market.day] = { buy: 0, sell: 0, count: 0 });
-    d[o.side] += amount; d.count++;
-    this.totals[o.side] += amount; this.totals.count++;
+    d[o.side] += amount; if (!merge) d.count++;
+    this.totals[o.side] += amount; if (!merge) this.totals.count++;
     this.rev++;
-    this.events.push({ kind: 'fill', text: '約定：' + o.name + ' ' + (o.side === 'buy' ? '買い' : '売り') + ' ' + o.qty.toLocaleString('ja-JP') + '株 × ' + price.toLocaleString('ja-JP') + '円（' + yenText(amount) + '）' });
-    return 'filled';
+    const side = o.side === 'buy' ? '買い' : '売り', n = (x) => x.toLocaleString('ja-JP');
+    if (!full) {
+      if (first) this.events.push({ kind: 'fill', text: '一部約定：' + o.name + ' ' + side + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは出来高に応じて順次約定します。' });
+    } else if (!first) {
+      this.events.push({ kind: 'fill', text: '約定完了：' + o.name + ' ' + side + ' 合計 ' + n(o.filled) + '株、平均 ' + (Math.round(o.filledAmt / o.filled * 10) / 10).toLocaleString('ja-JP') + '円（' + yenText(o.filledAmt) + '）' });
+    } else {
+      this.events.push({ kind: 'fill', text: '約定：' + o.name + ' ' + side + ' ' + n(fq) + '株 × ' + price.toLocaleString('ja-JP') + '円（' + yenText(amount) + '）' });
+    }
+    if (o.side === 'buy') this.noteHolding(market.byCode.get(o.code), market);
+    return full ? 'filled' : 'partial';
   }
 
   finish(o, status, reason, market) {
@@ -4249,6 +4368,7 @@ class Account {
       if (this.marginCall) errors.push('追証の解消中は信用の新規建てができません。追加入金または建玉返済で解消してください。');
       if (spec.creditType !== 'system' && spec.creditType !== 'general') errors.push('信用区分を選択してください。');
       if (side !== 'buy' && side !== 'sell') errors.push('買建または売建を選択してください。');
+      if (qtyOk && side === 'buy' && qty > this.maxMoreHold(k)) errors.push(this.holdMsg(k, qty));
     } else if (spec.operation === 'close') {
       position = this.creditPosition(spec.positionId);
       if (!position || position.code !== spec.code) errors.push('返済する建玉を選択してください。');
@@ -4293,53 +4413,79 @@ class Account {
     }
     if (o.side === 'buy') { if (k.stopHigh) return ''; if (o.type === 'limit' && price > o.limit) return ''; }
     else { if (k.stopLow) return ''; if (o.type === 'limit' && price < o.limit) return ''; }
-    return this.executeCredit(o, price, market, false);
+    const L = this.liqSlice(o, k, market);
+    if (L.q <= 0) return '';
+    return this.executeCredit(o, L.price, market, false, L.q);
   }
-  executeCredit(o, price, market, forced) {
-    const amount = Math.round(price * o.qty);
+  executeCredit(o, price, market, forced, fillQty) {
+    const total = o.qty, fq = (fillQty && fillQty < total) ? fillQty : total, full = fq >= total;
+    const amount = Math.round(price * fq);
     let pnl = null, positionId = o.positionId;
     if (o.operation === 'open') {
       const required = amount / CREDIT_MAX_LEVERAGE;
       if (required > this.creditFreeMargin(market) + (o.reserveMargin || 0) + 1e-6) {
         this.finishCreditOrder(o, 'rejected', '保証金が不足したため取消', market); return 'rejected';
       }
-      const id = this.nextCreditPositionId++;
-      const p = { id, code: o.code, name: o.name, creditType: o.creditType, direction: o.side === 'buy' ? 'long' : 'short',
-        qty: o.qty, entryPrice: price, entryDay: market.day, entrySec: market.sec,
-        dueDay: o.creditType === 'system' ? market.day + CREDIT_SYSTEM_TERM_DAYS : null,
-        accruedFees: 0, lastFeeDay: market.day - 1 };
-      this.creditPositions.push(p); positionId = id;
+      const own = o.openPosId ? this.creditPosition(o.openPosId) : null;
+      if (own) { own.entryPrice = (own.entryPrice * own.qty + price * fq) / (own.qty + fq); own.qty += fq; positionId = own.id; }
+      else {
+        const id = this.nextCreditPositionId++;
+        const p = { id, code: o.code, name: o.name, creditType: o.creditType, direction: o.side === 'buy' ? 'long' : 'short',
+          qty: fq, entryPrice: price, entryDay: market.day, entrySec: market.sec,
+          dueDay: o.creditType === 'system' ? market.day + CREDIT_SYSTEM_TERM_DAYS : null,
+          accruedFees: 0, lastFeeDay: market.day - 1 };
+        this.creditPositions.push(p); positionId = id; o.openPosId = id;
+      }
     } else {
       const p = this.creditPosition(o.positionId);
-      if (!p || p.code !== o.code || p.qty < o.qty) {
+      if (!p || p.code !== o.code || p.qty < fq) {
         this.finishCreditOrder(o, 'rejected', '返済対象の建玉または数量が不正です', market); return 'rejected';
       }
-      pnl = (p.direction === 'long' ? price - p.entryPrice : p.entryPrice - price) * o.qty;
+      pnl = (p.direction === 'long' ? price - p.entryPrice : p.entryPrice - price) * fq;
       this.cash += pnl; this.realized += pnl; this.reconcileTax();
-      p.qty -= o.qty;
+      p.qty -= fq;
       if (p.qty <= 0) this.creditPositions = this.creditPositions.filter((x) => x !== p);
-      else p.accruedFees *= (p.qty / (p.qty + o.qty));
+      else p.accruedFees *= (p.qty / (p.qty + fq));
     }
-    const paired = o.ocoGroup ? this.creditOrders.filter(x=>x.ocoGroup===o.ocoGroup&&x!==o) : [];
-    this.creditOrders = this.creditOrders.filter((x) => x !== o);
-    o.status = 'filled';
-    paired.forEach(other=>this.finishCreditOrder(other,'canceled','OCOのもう一方が約定したため自動取消',market));
-    // 信用IFDの第1注文が新規建て約定したら、第2注文は同じ営業日から有効にする。
-    if(o.advanced==='ifd' && o.operation==='open'){
-      const p=this.creditPosition(positionId);
-      const child={id:this.nextCreditOrderId++,day:market.day,sec:market.sec,code:o.code,name:o.name,operation:'close',creditType:o.creditType,
-        positionId,side:o.side==='buy'?'sell':'buy',type:'limit',limit:o.ifdExitPrice,stopPrice:null,qty:o.qty,reserveMargin:0,
-        status:'open',persistent:true,activeDay:market.day,activatedDay:market.day,advanced:'ifd-exit'};
-      if(p) this.creditOrders.push(child);
-      this.events.push({kind:'ifd',text:o.name+' の信用IFD第1注文が成立しました。第2注文の返済指値 '+yenText(o.ifdExitPrice)+' は同じ営業日から有効になります。'});
+    const first = !o.filled;
+    o.origQty = o.origQty || total;
+    o.filled = (o.filled || 0) + fq; o.filledAmt = (o.filledAmt || 0) + amount;
+    if (first && o.ocoGroup) {
+      this.creditOrders.filter(x => x.ocoGroup === o.ocoGroup && x !== o).forEach(other => this.finishCreditOrder(other, 'canceled', 'OCOのもう一方が約定したため自動取消', market));
     }
-    const ex = { id: this.creditExecs.length ? this.creditExecs[0].id + 1 : 1, orderId:o.id, positionId, day:market.day, sec:market.sec,
-      code: o.code, name: o.name, operation: o.operation, creditType: o.creditType, side: o.side, qty: o.qty, price, amount, pnl, forced: !!forced };
-    this.creditExecs.unshift(ex); if (this.creditExecs.length > 1000) this.creditExecs.pop();
+    if (!full) {
+      o.qty = total - fq; if (o.reserveMargin) o.reserveMargin *= (total - fq) / total;
+    } else {
+      this.creditOrders = this.creditOrders.filter((x) => x !== o);
+      o.status = 'filled'; o.qty = o.origQty;
+    }
+    // 信用IFDの第1注文が全数量の新規建てになったら、第2注文は同じ営業日から有効にする。
+    if (full && o.advanced === 'ifd' && o.operation === 'open') {
+      const p = this.creditPosition(positionId);
+      const child = { id:this.nextCreditOrderId++, day:market.day, sec:market.sec, code:o.code, name:o.name, operation:'close', creditType:o.creditType,
+        positionId, side:o.side === 'buy' ? 'sell' : 'buy', type:'limit', limit:o.ifdExitPrice, stopPrice:null, qty:o.qty, reserveMargin:0,
+        status:'open', persistent:true, activeDay:market.day, activatedDay:market.day, advanced:'ifd-exit' };
+      if (p) this.creditOrders.push(child);
+      this.events.push({ kind:'ifd', text:o.name + ' の信用IFD第1注文が成立しました。第2注文の返済指値 ' + yenText(o.ifdExitPrice) + ' は同じ営業日から有効になります。' });
+    }
+    const last = this.creditExecs[0], merge = last && last.orderId === o.id && last.day === market.day;
+    if (merge) { last.qty += fq; last.amount += amount; last.price = Math.round(last.amount / last.qty * 10) / 10; last.sec = market.sec; if (pnl != null) last.pnl = (last.pnl || 0) + pnl; }
+    else this.creditExecs.unshift({ id: this.creditExecs.length ? this.creditExecs[0].id + 1 : 1, orderId:o.id, positionId, day:market.day, sec:market.sec,
+      code: o.code, name: o.name, operation: o.operation, creditType: o.creditType, side: o.side, qty: fq, price, amount, pnl, forced: !!forced });
+    if (this.creditExecs.length > 1000) this.creditExecs.pop();
     this.rev++;
-    this.events.push({ kind: 'credit', text: (forced ? '信用強制決済：' : '信用約定：') + o.name + ' ' + (o.operation === 'open' ? (o.side === 'buy' ? '買建' : '売建') : (o.side === 'buy' ? '返済買' : '返済売')) + ' ' + o.qty.toLocaleString('ja-JP') + '株 × ' + price.toLocaleString('ja-JP') + '円' + (pnl == null ? '（新規建）' : '（実現損益 ' + Math.round(pnl).toLocaleString('ja-JP') + '円）') });
+    const kind = o.operation === 'open' ? (o.side === 'buy' ? '買建' : '売建') : (o.side === 'buy' ? '返済買' : '返済売'), n = (x) => x.toLocaleString('ja-JP');
+    const head = forced ? '信用強制決済：' : '信用約定：';
+    if (!full) {
+      if (first) this.events.push({ kind: 'credit', text: '信用一部約定：' + o.name + ' ' + kind + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは出来高に応じて順次約定します。' });
+    } else if (!first) {
+      this.events.push({ kind: 'credit', text: '信用約定完了：' + o.name + ' ' + kind + ' 合計 ' + n(o.filled) + '株、平均 ' + (Math.round(o.filledAmt / o.filled * 10) / 10).toLocaleString('ja-JP') + '円（' + yenText(o.filledAmt) + '）' });
+    } else {
+      this.events.push({ kind: 'credit', text: head + o.name + ' ' + kind + ' ' + n(fq) + '株 × ' + price.toLocaleString('ja-JP') + '円（' + yenText(amount) + '）' + (pnl != null ? '／損益 ' + yenText(pnl) : '') });
+    }
+    if (o.operation === 'open' && o.side === 'buy') this.noteHolding(market.byCode.get(o.code), market);
     this.refreshMarginCall(market);
-    return 'filled';
+    return full ? 'filled' : 'partial';
   }
   finishCreditOrder(o, status, reason, market) {
     this.creditOrders = this.creditOrders.filter((x) => x !== o);
@@ -6000,10 +6146,11 @@ class Account {
     const ref = lim > 0 ? lim : k.price;
     if (ord.product === 'credit') {
       if (ord.creditOperation === 'close') { const p = account.creditPosition(ord.positionId); return p ? Math.max(0, p.qty - account.creditReservedCloseQty(p.id)) : 0; }
-      return Math.max(0, Math.floor(account.creditFreeMargin(market) * CREDIT_MAX_LEVERAGE / ref / UNIT) * UNIT);
+      const byFund = Math.max(0, Math.floor(account.creditFreeMargin(market) * CREDIT_MAX_LEVERAGE / ref / UNIT) * UNIT);
+      return ord.side === 'buy' ? Math.min(byFund, account.maxMoreHold(k)) : byFund;
     }
     if (ord.side === 'sell') return Math.max(0, account.sellable(k.code));
-    return Math.max(0, Math.floor(account.power(market) / ref / UNIT) * UNIT);
+    return Math.max(0, Math.min(Math.floor(account.power(market) / ref / UNIT) * UNIT, account.maxMoreHold(k)));
   }
   function refreshCreditPositionSelect() {
     const select = $('credit-position'), old = String(ord.positionId || '');
@@ -6128,6 +6275,10 @@ class Account {
     if (ord.type === 'stop') $('o-stop-hint').textContent = '呼値 ' + tickSize(k.price,k.table) + '円刻み。買いは現在値より高く、売りは現在値より低い価格を指定してください。到達後は成行で執行します。';
     const q = req.qty;
     $('o-units').textContent = Number.isInteger(q) && q > 0 && q % UNIT === 0 ? '＝ ' + nf0.format(q / UNIT) + '単元（' + UNIT + '株が1単元）' : UNIT + '株が1単元です。数量は' + UNIT + '株単位で入力します。';
+    if (Number.isInteger(q) && q > 0 && q % UNIT === 0 && k.adv > 0) {
+      const rt = q / k.adv, first = Math.max(UNIT, Math.floor(k.adv * LIQ.touch / UNIT) * UNIT);
+      if (q > first) $('o-units').textContent += '／1日の平均出来高の ' + (rt >= 0.1 ? (rt * 100).toFixed(0) : (rt * 100).toFixed(1)) + '%：一度には約定せず、出来高に応じて順次約定します' + (rt >= 0.05 ? '（価格への影響も大きめです）' : '');
+    }
     const mx = maxQtyFor(k);
     const mb = $('o-max');
     mb.textContent = (isClose || (!isCredit && ord.side === 'sell') ? '全部（' : '最大（') + nf0.format(mx) + '株）';
@@ -6238,7 +6389,7 @@ class Account {
       tr.appendChild(mkTd(typeText(o)));
       tr.appendChild(mkTd(creditOrderStatus(o)));
       tr.appendChild(mkTd(o.operation === 'open' ? (o.side === 'buy' ? '買建' : '売建') : (o.side === 'buy' ? '返済買' : '返済売')));
-      tr.appendChild(mkTd(nf0.format(o.qty) + '株', 'n'));
+      tr.appendChild(mkTd(qtyLabel(o), 'n'));
       const k = market.byCode.get(o.code), p = k ? (o.type === 'limit' ? o.limit : o.type === 'stop' ? o.stopPrice : k.price) : 0;
       tr.appendChild(mkTd(yen(p * o.qty), 'n'));
       const act = mkEl('td', 'act'); const b = mkEl('button', 'btn sm cancel', '取消'); b.type = 'button';
@@ -6284,7 +6435,7 @@ class Account {
         tr.appendChild(mkTd(o.name + '（' + o.code + '）'));
         tr.appendChild(mkTd(sideText(o.side)));
         tr.appendChild(mkTd(typeText(o)));
-        tr.appendChild(mkTd(nf0.format(o.qty) + '株', 'n'));
+        tr.appendChild(mkTd(qtyLabel(o), 'n'));
         const shownReserve = o.ocoGroup ? ((account.ocoGroups[o.ocoGroup] && account.ocoGroups[o.ocoGroup].shown) ? 0 : 0) : o.reserve;
         tr.appendChild(mkTd(o.side === 'buy' ? yen(shownReserve) : '—', 'n'));
         const st = mkTd('', 'st'); tr.appendChild(st);
@@ -6331,7 +6482,7 @@ class Account {
         tr.appendChild(mkTd(o.name + '（' + o.code + '）'));
         tr.appendChild(mkTd(sideText(o.side)));
         tr.appendChild(mkTd(typeText(o)));
-        tr.appendChild(mkTd(nf0.format(o.qty) + '株', 'n'));
+        tr.appendChild(mkTd(qtyLabel(o), 'n'));
         tr.appendChild(mkTd((o.status === 'canceled' ? '取消' : o.status === 'expired' ? '失効' : '不成立') + '（' + o.reason + '）'));
         tr.appendChild(mkTd(stampText(o.closeDay, o.closeSec)));
         cb.appendChild(tr);
@@ -7292,7 +7443,7 @@ class Account {
     const dt = Math.min(0.25, (now - last) / 1000);
     last = now;
     if (running && market.phase !== 'closed') {
-      if (now - lastAutoCheckpoint > 7000) { lastAutoCheckpoint = now; scheduleAutoSave(700); }
+      if (now - lastAutoCheckpoint > 30000) { lastAutoCheckpoint = now; scheduleAutoSave(700); }
       acc += dt * speed;
       const k = Math.floor(acc);
       if (k > 0) {
@@ -7391,7 +7542,7 @@ class Account {
     return saveDbPromise;
   }
 
-  function saveSnapshot() {
+  function saveSnapshot(noClone) {
     const omitted = new Set(['rand','gauss','fast','creditRand','byCode','indexMembers','etf','stocks']);
     const marketCore = {};
     Object.keys(market).forEach((key) => { if (!omitted.has(key)) marketCore[key] = market[key]; });
@@ -7427,6 +7578,7 @@ class Account {
       account: Object.assign({}, account)
     };
     // スナップショットを完全に独立させ、保存後の市場更新がバックアップ内容へ波及しないようにする。
+    if (noClone === true) return snapshot; // IndexedDBへの書き込み直前だけ使用（書き込み時にコピーされる）
     try { return typeof structuredClone === 'function' ? structuredClone(snapshot) : JSON.parse(JSON.stringify(snapshot, jsonSaveReplacer), jsonSaveReviver); }
     catch (_) { return JSON.parse(JSON.stringify(snapshot, jsonSaveReplacer), jsonSaveReviver); }
   }
@@ -7436,7 +7588,11 @@ class Account {
       let tx;
       try {
         tx = db.transaction(SAVE_STORE, 'readwrite');
-        tx.objectStore(SAVE_STORE).put(snapshot, SAVE_KEY);
+        const store = tx.objectStore(SAVE_STORE);
+        if (typeof snapshot === 'function') {
+          try { store.put(snapshot(true), SAVE_KEY); }          // 通常：コピーなしで渡す（書き込み時に1回だけコピー）
+          catch (e1) { store.put(snapshot(false), SAVE_KEY); }  // 失敗したら従来の方法（完全コピー）で再試行
+        } else store.put(snapshot, SAVE_KEY);
       } catch (error) { reject(error); return; }
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error || new Error('自動保存に失敗しました。'));
@@ -7467,14 +7623,16 @@ class Account {
     return new Intl.DateTimeFormat('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(date);
   }
 
+  let lastAutoSig = '';
+  function autoSig() { return market.day + '|' + market.sec + '|' + account.rev + '|' + account.cash + '|' + account.execs.length + '|' + account.orders.length + '|' + account.creditPositions.length; }
   async function persistNow(manual) {
     if (!market || !account) return false;
     if (autoSaveBusy) { autoSaveQueued = true; return false; }
     autoSaveBusy = true;
     try {
-      const snapshot = saveSnapshot();
-      await saveToIndexedDB(snapshot);
-      lastSavedAt = snapshot.savedAt;
+      const savedAt = new Date().toISOString(); const sigNow = autoSig();
+      await saveToIndexedDB((noClone) => { const s = saveSnapshot(noClone); s.savedAt = savedAt; return s; });
+      lastSavedAt = savedAt; lastAutoSig = sigNow;
       setSaveStatus('保存済み', '最終保存：' + formatSavedTime(lastSavedAt) + '。このブラウザ内に保存されています。');
       if (manual) toast('市場・口座データをブラウザ内に保存しました。');
       return true;
@@ -7491,7 +7649,7 @@ class Account {
   function scheduleAutoSave(delay) {
     if (!autoSaveReady) return;
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => { persistNow(false); }, Math.max(250, delay || 1200));
+    autoSaveTimer = setTimeout(() => { if (market && account && lastAutoSig === autoSig()) return; persistNow(false); }, Math.max(250, delay || 1200));
   }
 
   function jsonSaveReplacer(key, value) {
@@ -7659,9 +7817,9 @@ class Account {
     // 通常操作後は少し待って保存。入力途中のフォーム操作だけでは頻繁に書き込まない。
     document.addEventListener('click', (event) => {
       if (event.target && event.target.closest && event.target.closest('#persist-export,#persist-import-trigger')) return;
-      scheduleAutoSave(1200);
+      scheduleAutoSave(4000);
     }, true);
-    document.addEventListener('change', () => scheduleAutoSave(1200), true);
+    document.addEventListener('change', () => scheduleAutoSave(4000), true);
     document.addEventListener('visibilitychange', () => { if (document.hidden) persistNow(false); });
     window.addEventListener('pagehide', () => { persistNow(false); });
 
@@ -7682,8 +7840,10 @@ class Account {
         setSaveStatus('自動保存が有効です', 'このブラウザ内に自動保存します。最初の保存を準備しています。');
         scheduleAutoSave(1800);
       }
+      window.__hideSplash && window.__hideSplash();
     }).catch((error) => {
       autoSaveReady = false;
+      window.__hideSplash && window.__hideSplash();
       setSaveStatus('ブラウザ内の自動保存を利用できません', (error && error.message ? error.message : '保存領域にアクセスできません。') + ' JSONバックアップの書き出し・取り込みは利用できます。', true);
     });
   }
@@ -7860,6 +8020,7 @@ class Account {
   syncPlayButton();
   route();
   initDataManagement();
+  window.__bootStage && window.__bootStage('保存データを確認しています…');
   requestAnimationFrame(frame);
   }
   $('hm-grad').style.background = 'linear-gradient(90deg, color-mix(in srgb, var(--down) 56%, var(--surface)), var(--surface), color-mix(in srgb, var(--up) 56%, var(--surface)))';
@@ -7869,6 +8030,16 @@ class Account {
 
 <script>if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <script id="mobile-layer-js">
+/* ---- 起動画面の制御：復元確認が終わったら消す。万一終わらなくても最大8秒で必ず消す ---- */
+(function () {
+  var sp = document.getElementById('boot-splash'), st = document.getElementById('boot-stage'), done = false;
+  window.__bootStage = function (t) { if (st) st.textContent = t; };
+  window.__hideSplash = function () {
+    if (done || !sp) return; done = true;
+    requestAnimationFrame(function () { sp.classList.add('off'); setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 400); });
+  };
+  setTimeout(window.__hideSplash, 8000);
+})();
 /* ================= Pixel 9a 向けモバイル専用スクリプト（本体ロジックには触れない） ================= */
 (function () {
   'use strict';
