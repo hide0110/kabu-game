@@ -2701,6 +2701,19 @@ function dividendWindow(stock,day) {
   if((f.specialDividend||0)>0 && f.specialExDay!=null) { const dist=f.specialExDay-day; if(Math.abs(dist)<Math.abs(best)) best=dist; }
   return {daysTo:best,pre:best>0&&best<=8?(9-best)/8:0,post:best<=0&&best>=-5?(6+best)/6:0};
 }
+function playerCreditFor(code) {
+  try {
+    const account = window.__myAccount;   // 口座は別のスコープにあるため、公開した窓口から取得する
+    if (!account || !account.creditPositions || !account.creditPositions.length) return null;
+    const r = { general: { buy: 0, sell: 0 }, system: { buy: 0, sell: 0 } }; let any = false;
+    for (const p of account.creditPositions) {
+      if (p.code !== code || !(p.qty > 0)) continue;
+      const t = p.creditType === 'system' ? 'system' : 'general';
+      if (p.direction === 'long') r[t].buy += p.qty; else r[t].sell += p.qty; any = true;
+    }
+    return any ? r : null;
+  } catch (e) { return null; }
+}
 function cloneCreditBalances(x) { return {general:{buy:x.general.buy,sell:x.general.sell},system:{buy:x.system.buy,sell:x.system.sell}}; }
 
 class Stock {
@@ -3241,7 +3254,9 @@ class Market {
       const forcedLiquidation=ratio>=3&&change<=-0.03?clamp((-change-0.03)*2.5,0,0.12):0;
       if(forcedLiquidation>0) { y.buy=Math.max(100,Math.round(y.buy*(1-forcedLiquidation)/UNIT)*UNIT); buy=g.buy+y.buy; ratio=buy/Math.max(1,sell); }
       k.creditPublished=cloneCreditBalances(k.creditCurrent); k.creditPublishedDay=this.day;
-      buy=g.buy+y.buy; sell=g.sell+y.sell; ratio=buy/Math.max(1,sell);
+      k.creditMine = playerCreditFor(k.code);   // あなたの建玉（前営業日までの分）も、公表される信用残に含める
+      if (k.creditMine) for (const t of ['general', 'system']) { k.creditPublished[t].buy += k.creditMine[t].buy; k.creditPublished[t].sell += k.creditMine[t].sell; }
+      buy=k.creditPublished.general.buy+k.creditPublished.system.buy; sell=k.creditPublished.general.sell+k.creditPublished.system.sell; ratio=buy/Math.max(1,sell);
       let p=ratio<1?0.00018:ratio<2?0:ratio<3?-0.00010:ratio<10?-0.00035:-0.00065;
       const creditTotal=buy+sell;
       const volumeImpact=Math.min(1,creditTotal/Math.max(UNIT,vol));
@@ -3845,7 +3860,8 @@ class Account {
     const I = (c) => { const r = c / adv; return K * (Math.sqrt(r) + r * Math.sqrt(r)); };   // 累計c株を買った（売った）ときの価格の動き（割合）。小口は√則、1日の出来高を超える大口は急に不利になる
     // 基準価格：自分の売買の影響を除いた価格（株価＋これから反映される分−すでに自分が動かした分）
     const den = Math.max(0.2, 1 + sign * 0.5 * I(cum));
-    const ref = Math.max(k.lower, Math.min(k.upper, k.price * (1 + (k.impPend || 0)) / den));
+    const fixed = k.impFixDay === market.day && k.impFixSide === sign;   // ストップ高（安）に張り付いた後は、その時の基準を使う
+    const ref = fixed ? k.impFix : Math.max(k.lower, Math.min(k.upper, k.price * (1 + (k.impPend || 0)) / den));
     // 払ってよい上限（買い）・下限（売り）：指値。成行は基準から最大5%まで。値幅制限の範囲内。
     let lp = o.type === 'limit' ? o.limit : ref * (1 + sign * LIQ.mktSlip);
     lp = Math.max(k.lower, Math.min(k.upper, lp));
@@ -3870,6 +3886,12 @@ class Account {
     price = Math.min(k.upper, Math.max(k.lower, price));
     // 自分の約定も、その日の出来高・売買代金に加わる（市場の出来高の枠には数えない）
     k.vol += q; k.liqV += q; k.turn += q * price;
+    // 買い（売り）が上限（下限）の値段まで食い上げても、まだ残る場合は、ストップ高（安）に張り付く。残りは買い気配（売り気配）のまま。
+    if (!fixed && o.qty > q && q >= sweep && sweep > 0 && (sign > 0 ? lp >= k.upper : lp <= k.lower) && k.price > k.lower && k.price < k.upper && typeof market.forceStop === 'function') {
+      k.impFixDay = market.day; k.impFixSide = sign; k.impFix = ref;
+      market.forceStop(k.code, sign); k.impPend = 0;
+      this.events.push({ kind: 'info', text: k.name + '：' + (sign > 0 ? 'ストップ高' : 'ストップ安') + 'に達しました（買い気配・売り気配のまま、残りは約定していません）。' });
+    }
     const lc = k.candles && k.candles.length ? k.candles[k.candles.length - 1] : null; if (lc && typeof lc.v === 'number') lc.v += q;
     return { q, price };
   }
@@ -5629,6 +5651,7 @@ class Account {
 
   /* ======== 取引（口座・注文）の画面 ======== */
   let account = null;
+  Object.defineProperty(window, '__myAccount', { get: function () { return account; }, configurable: true });
   let initialCapital = ORDER_LIMITS.capitalDefault;
   let monthlyAutoDeposit = 0;
   const ord = { code: DEFS[0].code, side: 'buy', type: 'market', product: 'cash', creditType: 'system', creditOperation: 'open', positionId: null, confirming: false };
@@ -6295,8 +6318,21 @@ class Account {
     $('o-units').textContent = Number.isInteger(q) && q > 0 && q % UNIT === 0 ? '＝ ' + nf0.format(q / UNIT) + '単元（' + UNIT + '株が1単元）' : UNIT + '株が1単元です。数量は' + UNIT + '株単位で入力します。';
     if (Number.isInteger(q) && q > 0 && q % UNIT === 0 && k.adv > 0) {
       const rt = q / k.adv, first = Math.max(UNIT, Math.floor(k.adv * LIQ.touch / UNIT) * UNIT);
-      if (q > first) { const mv = LIQ.impactK * Math.max(0.3, k.d || 1) * (Math.sqrt(rt) + rt * Math.sqrt(rt));
-        $('o-units').textContent += '／1日の平均出来高の ' + (rt >= 0.1 ? (rt * 100).toFixed(0) : (rt * 100).toFixed(1)) + '%：買い上がり（売り下がり）ながら約定します。想定の価格の動き 約' + mv.toFixed(1) + '%（指値・成行の範囲内）'; }
+      if (q > first) {
+        const Kc = LIQ.impactK * Math.max(0.3, k.d || 1) / 100, Ifn = (r) => Kc * (Math.sqrt(r) + r * Math.sqrt(r));
+        const buying = req.side === 'buy';
+        // 1日に株価を動かせる範囲：指値はその値段まで、成行は5%まで、どちらも値幅制限の内側
+        let lp = ord.type === 'limit' && Number.isFinite(req.limit) && req.limit > 0 ? req.limit : k.price * (1 + (buying ? 1 : -1) * LIQ.mktSlip);
+        lp = Math.max(k.lower, Math.min(k.upper, lp));
+        const room = buying ? lp / k.price - 1 : 1 - lp / k.price;
+        let lo = 0, hi = 1e4; for (let i = 0; i < 44; i++) { const mid = (lo + hi) / 2; if (Ifn(mid) > room) hi = mid; else lo = mid; }
+        const dayMax = room > 0 ? Math.floor(lo * k.adv / UNIT) * UNIT : 0;
+        const rtTxt = rt >= 1 ? rt.toFixed(rt >= 10 ? 0 : 1) + '倍' : (rt >= 0.1 ? (rt * 100).toFixed(0) : (rt * 100).toFixed(1)) + '%';
+        let txt = '／1日の平均出来高の ' + rtTxt + '。';
+        if (q <= dayMax) txt += '買い上がり（売り下がり）ながら、今日中に全部約定する見込みです。想定の価格の動き 約' + (Ifn(rt) * 100).toFixed(1) + '%。';
+        else txt += (ord.type === 'limit' ? 'この指値' : '成行（最大' + (LIQ.mktSlip * 100) + '%）') + 'では、1日に約 ' + nf0.format(dayMax) + '株（' + Math.round(dayMax / q * 100) + '%）までの見込みです。' + (ord.type === 'limit' ? (lp >= k.upper && buying || lp <= k.lower && !buying ? '残りは約定せず、値幅の限度まで届くとストップ' + (buying ? '高' : '安') + 'に張り付きます。' : '残りは、その指値の範囲では約定しません。') : '残りは、この成行では約定しません（指値にすると範囲を広げられます）。');
+        $('o-units').textContent += txt;
+      }
     }
     const mx = maxQtyFor(k);
     const mb = $('o-max');
@@ -7062,6 +7098,12 @@ class Account {
     ['company-ratio-all','company-ratio-general','company-ratio-system'].forEach((id,i)=>setText($(id),companyRatioText(i===0?totalBuy:i===1?gs.buy:ys.buy,i===0?totalSell:i===1?gs.sell:ys.sell)));
     setText($('company-margin-date'),k.creditPublishedDay>0?('第'+k.creditPublishedDay+'営業日分（前日公表）'):'初期設定値');
     setText($('company-margin-rating'),'合算信用倍率：'+companyRatioText(totalBuy,totalSell)+' ／ '+companyRatioClass(ratios[0]));
+    { let mine=$('company-my-credit'); const rating=$('company-margin-rating');
+      if(!mine&&rating){ mine=document.createElement('div'); mine.id='company-my-credit'; mine.className='note'; mine.style.marginTop='8px'; rating.parentNode.insertBefore(mine,rating.nextSibling); }
+      if(mine){ const cur=playerCreditFor(k.code), incl=k.creditMine;
+        const sum=o=>o?o.general.buy+o.system.buy:0, sumS=o=>o?o.general.sell+o.system.sell:0;
+        mine.textContent=cur||incl?('あなたの信用建玉：買建 '+nf0.format(sum(cur))+'株／売建 '+nf0.format(sumS(cur))+'株。公表された信用残には、前営業日までの分（買建 '+nf0.format(sum(incl))+'株／売建 '+nf0.format(sumS(incl))+'株）を含みます。今日の分は、翌営業日の公表に反映されます。'):'あなたの信用建玉はありません。';
+        mine.hidden=!!k.isEtf; } }
     const infoText='現在の需給に応じた価格圧力：'+(k.marginPricePressure>0?'上昇方向':k.marginPricePressure<0?'下落方向':'限定的')+'。';
     $('company-margin-rating').title=infoText;
     const now=performance.now(); if(force||now-companyLastDraw>700) { drawCompanyMiniChart(); companyLastDraw=now; }
