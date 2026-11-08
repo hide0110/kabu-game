@@ -3607,6 +3607,17 @@ class Market {
       if(actionDirection) this.queueRatingSignal(k,actionDirection,1.2,actionImportant,'資本政策');
     }
   }
+  /* 売買が値段を押し上げ（押し下げ）て、その値段に張り付く（残りの注文が板に残って価格を支える） */
+  pinPrice(code, px, hold) {
+    const k = this.stocks.find((x) => x.code === code);
+    if (!k) return;
+    const prev = k.price;
+    k.p = Math.max(k.lower, Math.min(k.upper, px));
+    k.price = k.round(k.p);
+    k.hold = Math.max(k.hold || 0, hold || 60);
+    if (k.price > k.dayHigh) k.dayHigh = k.price; else if (k.price < k.dayLow) k.dayLow = k.price;
+    k.touchCandle(prev, k.price, Math.floor(this.sec / 60));
+  }
   /* 動作確認用：指定した銘柄を、ストップ高(dir>0)またはストップ安(dir<0)にして張り付かせる */
   forceStop(code, dir) {
     const k = this.stocks.find((x) => x.code === code);
@@ -3863,7 +3874,12 @@ class Account {
     const fixed = k.impFixDay === market.day && k.impFixSide === sign;   // ストップ高（安）に張り付いた後は、その時の基準を使う
     const ref = fixed ? k.impFix : Math.max(k.lower, Math.min(k.upper, k.price * (1 + (k.impPend || 0)) / den));
     // 払ってよい上限（買い）・下限（売り）：指値。成行は基準から最大5%まで。値幅制限の範囲内。
-    let lp = o.type === 'limit' ? o.limit : ref * (1 + sign * LIQ.mktSlip);
+    let lp;
+    if (o.type === 'limit') lp = o.limit;
+    else {   // 成行：その注文が最初に約定を始めた時点の値段から、最大5%まで（注文ごとに枠がある）
+      if (o.liqAnchor == null || o.liqAnchorDay !== market.day) { o.liqAnchor = ref * (1 + sign * I(cum)); o.liqAnchorDay = market.day; }
+      lp = o.liqAnchor * (1 + sign * LIQ.mktSlip);
+    }
     lp = Math.max(k.lower, Math.min(k.upper, lp));
     const room = sign > 0 ? lp / ref - 1 : 1 - lp / ref;    // 動かしてよい価格の幅
     let sweep = 0;
@@ -3873,7 +3889,19 @@ class Account {
     }
     const base = Math.floor(((last ? Math.max(cap, k.adv * LIQ.closeAuction) : (k.liqB || 0))) / UNIT) * UNIT;
     const q = Math.min(o.qty, Math.max(base, sweep));
-    if (q <= 0) return { q: 0, price: k.price };
+    // 食い上げ（食い下げ）られる範囲を使い切っても注文が残るときは、株価はその指値（成行は5%先）に張り付く。残りは買い気配（売り気配）として、価格を支える。
+    const left = o.qty - Math.max(0, q), exhausted = left > 0 && q >= sweep && typeof market.pinPrice === 'function';
+    if (exhausted && o.type !== 'limit') o.mktCut = true;   // 成行は、5%動いたらそこで打ち切り（残りは取消）
+    const pinIt = () => {
+      if (!exhausted) return;
+      if (sign > 0 ? k.price < lp : k.price > lp) {
+        const atBound = sign > 0 ? lp >= k.upper : lp <= k.lower;
+        if (!fixed) { k.impFixDay = market.day; k.impFixSide = sign; k.impFix = ref; }
+        market.pinPrice(k.code, lp, atBound ? 300 : 90); k.impPend = 0;
+        if (atBound && k.pinMsgDay !== market.day) { k.pinMsgDay = market.day; this.events.push({ kind: 'info', text: k.name + '：' + (sign > 0 ? 'ストップ高' : 'ストップ安') + 'に達しました（買い気配・売り気配のまま、残りは約定していません）。' }); }
+      }
+    };
+    if (q <= 0) { pinIt(); return { q: 0, price: k.price }; }
     k.liqB = Math.max(0, (k.liqB || 0) - q);
     const c0 = cum, c1 = cum + q;
     const J = (c) => { const r = c / adv; return (2 / 3) * r * Math.sqrt(r) + 0.4 * r * r * Math.sqrt(r); };
@@ -3886,12 +3914,7 @@ class Account {
     price = Math.min(k.upper, Math.max(k.lower, price));
     // 自分の約定も、その日の出来高・売買代金に加わる（市場の出来高の枠には数えない）
     k.vol += q; k.liqV += q; k.turn += q * price;
-    // 買い（売り）が上限（下限）の値段まで食い上げても、まだ残る場合は、ストップ高（安）に張り付く。残りは買い気配（売り気配）のまま。
-    if (!fixed && o.qty > q && q >= sweep && sweep > 0 && (sign > 0 ? lp >= k.upper : lp <= k.lower) && k.price > k.lower && k.price < k.upper && typeof market.forceStop === 'function') {
-      k.impFixDay = market.day; k.impFixSide = sign; k.impFix = ref;
-      market.forceStop(k.code, sign); k.impPend = 0;
-      this.events.push({ kind: 'info', text: k.name + '：' + (sign > 0 ? 'ストップ高' : 'ストップ安') + 'に達しました（買い気配・売り気配のまま、残りは約定していません）。' });
-    }
+    pinIt();
     const lc = k.candles && k.candles.length ? k.candles[k.candles.length - 1] : null; if (lc && typeof lc.v === 'number') lc.v += q;
     return { q, price };
   }
@@ -4174,8 +4197,14 @@ class Account {
       if (o.type === 'limit' && price < o.limit) return '';
     }
     const L = this.liqSlice(o, k, market);
-    if (L.q <= 0) return '';
-    return this.execute(o, L.price, market, L.q);
+    if (L.q <= 0) { if (o.mktCut) this.cutMarketRest(o, market); return ''; }
+    const rr = this.execute(o, L.price, market, L.q);
+    if (o.mktCut) this.cutMarketRest(o, market);
+    return rr;
+  }
+  /* 成行注文は、株価が最大5%動くまで約定し、それでも残る分は取り消す（残りが売れる株・買付余力を押さえ続けないように） */
+  cutMarketRest(o, market) {
+    if (this.orders.indexOf(o) >= 0 && o.qty > 0) this.finish(o, 'canceled', '成行注文：株価が約' + Math.round(LIQ.mktSlip * 100) + '%動いたため、残りを取消', market);
   }
 
   execute(o, price, market, fillQty) {
@@ -4454,8 +4483,10 @@ class Account {
     if (o.side === 'buy') { if (k.stopHigh) return ''; if (o.type === 'limit' && price > o.limit) return ''; }
     else { if (k.stopLow) return ''; if (o.type === 'limit' && price < o.limit) return ''; }
     const L = this.liqSlice(o, k, market);
-    if (L.q <= 0) return '';
-    return this.executeCredit(o, L.price, market, false, L.q);
+    if (L.q <= 0) { if (o.mktCut) this.cutMarketRest(o, market); return ''; }
+    const rr = this.executeCredit(o, L.price, market, false, L.q);
+    if (o.mktCut) this.cutMarketRest(o, market);
+    return rr;
   }
   executeCredit(o, price, market, forced, fillQty) {
     const total = o.qty, fq = (fillQty && fillQty < total) ? fillQty : total, full = fq >= total;
