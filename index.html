@@ -2344,7 +2344,7 @@ body[data-page="settings"]:not([data-stv="save"]) section.rules { display: none;
         <li><strong>信用取引：</strong>制度信用（6か月）と一般信用（この市場では無期限モデル）を選べます。信用買い（買建）・信用売り（売建）が可能で、最大レバレッジは3.3倍です。新規建時の必要保証金は建玉金額の1/3.3、保証金率（現金保証金に信用の評価損益を加え、建玉金額〔約定代金〕で除した値）が大引け時点で20%を下回ると追証が発生します（含み益は保証金に加算されます。ただし、新規建に使える余力には含み益を含めません）。追証は自己資金の入金、借入、または建玉返済で解消でき、発生日から2営業日後の後場寄付までに解消されない場合は強制決済します。制度信用の返済期限は120営業日（6か月の近似）です。</li>
         <li><strong>追証のための借入：</strong>追証が発生している間のみ借入できます。借入上限は初期資金の2倍（最大2,000万円）。借入金利はその日の政策金利＋3.5%／年で、1営業日ごとに未払利息へ加算します。返済時は未払利息から先に充当し、その後に元本を減らします。借入金は口座現金・保証金に加算されますが、合計資産・評価損益では借入元本と未払利息を負債として差し引きます。</li>
         <li><strong>信用取引の費用（シミュレーション上の固定値）：</strong>制度信用は買方金利年率2.8%、売方貸株料年率1.1%。一般信用は買方金利年率3.0%、売方貸株料年率1.5%。営業日ごとに概算費用を現金から差し引きます。実際の証券会社の金利・貸株料・逆日歩・品貸料とは異なり、逆日歩、配当・権利処理、現引・現渡は再現しません。</li>
-        <li><strong>流動性（約定のしかた）：</strong>注文は、その時に市場で成立している出来高の一部ずつ約定します。最初に取れるのは1日の平均出来高の0.2%ほど、その後は出来高の25%までです。大きな注文は、数分〜数十分かけて「一部約定」を繰り返します。買えば約定価格が不利になり、株価も数分かけて動きます（影響は、注文が大きいほど、変動の大きい銘柄ほど強くなります）。大引けの約定は、平均出来高の10%までです。残りは当日限りの注文なら失効します。</li>
+        <li><strong>流動性（約定のしかた）：</strong>大きな注文は、買い上がり（売り下がり）ながら約定します。指値を高く（売りは低く）するほど、株価を動かせる範囲が広がり、多くの量が一度に約定します。ただし、約定量が大きいほど約定価格は不利になり（小口は約定量の平方根に比例、1日の出来高を超える大口は急に不利になります。変動の大きい銘柄ほど強く動きます）、株価も数分かけて動きます。成行は、一度に最大5%まで株価を動かします。値幅制限（ストップ高・安）の範囲を超えては約定しません。約定した数量は、その日の出来高にも加わります。残りは当日限りの注文なら失効します。</li>
         <li><strong>保有割合の上限：</strong>現物・信用買いを合わせた保有株数が、発行済株式数（自己株式を除く）の1/3を超える買付はできません（公開買付規制の簡易版）。5%以上になると、大量保有報告の対象になった旨をお知らせします。</li>
         <li><strong>時価総額：</strong>株価 × 発行済株式数（自己株式を除く）で、株価に合わせてリアルタイムに変わります。ヒートマップの面積も同じように変わり、大小が入れ替わることがあります。</li>
         <li><strong>税金（特定口座）：</strong>譲渡益に対する税率は20.315%です。「源泉徴収あり」では、シミュレーション開始からの通算実現損益をもとに税額を現金から控除し、通算損益が減少した場合は差額を還付します。「源泉徴収なし」では現金から控除せず、概算税額を表示します。税額計算はゲーム内の通算期間による簡略化で、実際の年単位の特定口座計算、配当との損益通算、繰越控除などは再現しません。この画面では便宜上いつでも切替できますが、実際の源泉徴収の選択は年単位です。</li>
@@ -3703,7 +3703,8 @@ const LIQ = {
   touch: 0.002,        // 最初に取れる板の厚み（1日の平均出来高の0.2%）
   part: 0.25,          // 以降は、市場の出来高の25%まで取れる
   closeAuction: 0.10,  // 大引けの約定（引け）は、1日の平均出来高の10%まで
-  impactK: 0.8,        // 価格への影響の強さ（日次変動率×√(出来高比)×K）
+  impactK: 1.2,        // 価格への影響の強さ（日次変動率×K×（√r＋r^1.5）、r＝約定量÷1日の平均出来高）
+  mktSlip: 0.05,       // 成行注文が、一度に株価を動かしてよい幅（5%まで）
   tob: 1 / 3,          // 保有割合がこれを超える買付は不可（公開買付規制の簡易版）
   report: 0.05         // 大量保有報告の目安（5%）
 };
@@ -3838,21 +3839,38 @@ class Account {
       k.liqV = k.vol; k.liqK = key;
       k.liqB = Math.min(cap, (k.liqB || 0) + dv * LIQ.part);
     }
-    const avail = Math.floor(((last ? Math.max(cap, k.adv * LIQ.closeAuction) : (k.liqB || 0)) ) / UNIT) * UNIT;
-    const q = Math.min(o.qty, avail);
+    const sign = o.side === 'buy' ? 1 : -1, adv = Math.max(1, k.adv), K = LIQ.impactK * Math.max(0.3, k.d || 1) / 100;
+    if (k.impDay !== market.day) { k.impDay = market.day; k.impBuy = 0; k.impSell = 0; }
+    const cum = sign > 0 ? (k.impBuy || 0) : (k.impSell || 0);
+    const I = (c) => { const r = c / adv; return K * (Math.sqrt(r) + r * Math.sqrt(r)); };   // 累計c株を買った（売った）ときの価格の動き（割合）。小口は√則、1日の出来高を超える大口は急に不利になる
+    // 基準価格：自分の売買の影響を除いた価格（株価＋これから反映される分−すでに自分が動かした分）
+    const den = Math.max(0.2, 1 + sign * 0.5 * I(cum));
+    const ref = Math.max(k.lower, Math.min(k.upper, k.price * (1 + (k.impPend || 0)) / den));
+    // 払ってよい上限（買い）・下限（売り）：指値。成行は基準から最大5%まで。値幅制限の範囲内。
+    let lp = o.type === 'limit' ? o.limit : ref * (1 + sign * LIQ.mktSlip);
+    lp = Math.max(k.lower, Math.min(k.upper, lp));
+    const room = sign > 0 ? lp / ref - 1 : 1 - lp / ref;    // 動かしてよい価格の幅
+    let sweep = 0;
+    if (room > 0) {   // 価格の動きが room に達するまでの累計約定量を、二分法で逆算する
+      let lo = 0, hi = 1e4; for (let i = 0; i < 44; i++) { const mid = (lo + hi) / 2; if (K * (Math.sqrt(mid) + mid * Math.sqrt(mid)) > room) hi = mid; else lo = mid; }
+      sweep = Math.floor((adv * lo - cum) / UNIT) * UNIT;
+    }
+    const base = Math.floor(((last ? Math.max(cap, k.adv * LIQ.closeAuction) : (k.liqB || 0))) / UNIT) * UNIT;
+    const q = Math.min(o.qty, Math.max(base, sweep));
     if (q <= 0) return { q: 0, price: k.price };
     k.liqB = Math.max(0, (k.liqB || 0) - q);
-    // 価格への影響：その日の累計の約定量に対して、√の形で効く（小さな注文はほとんど動かさない）
-    const sign = o.side === 'buy' ? 1 : -1, sig = Math.max(0.3, k.d || 1) / 100;
-    if (k.impDay !== market.day) { k.impDay = market.day; k.impBuy = 0; k.impSell = 0; }
-    const cum = sign > 0 ? (k.impBuy || 0) : (k.impSell || 0), adv = Math.max(1, k.adv);
-    const inc = LIQ.impactK * sig * (Math.sqrt((cum + q) / adv) - Math.sqrt(cum / adv));
-    if (sign > 0) k.impBuy = cum + q; else k.impSell = cum + q;
-    k.impPend = (k.impPend || 0) + sign * inc * 0.5;       // 株価そのものも、数分かけて動く
-    let price = k.round(k.price * (1 + sign * inc));         // 自分の約定は、その分だけ不利な値段になる
+    const c0 = cum, c1 = cum + q;
+    const J = (c) => { const r = c / adv; return (2 / 3) * r * Math.sqrt(r) + 0.4 * r * r * Math.sqrt(r); };
+    const avgI = K * (J(c1) - J(c0)) / (q / adv);   // この約定の平均の価格の動き
+    if (sign > 0) k.impBuy = c1; else k.impSell = c1;
+    k.impPend = (k.impPend || 0) + sign * (I(c1) - I(c0)) * 0.5;   // 株価そのものも、数分かけて動く
+    let price = k.round(ref * (1 + sign * avgI));
     if (sign > 0) { price = Math.max(price, k.price); if (o.type === 'limit') price = Math.min(price, o.limit); }
     else { price = Math.min(price, k.price); if (o.type === 'limit') price = Math.max(price, o.limit); }
     price = Math.min(k.upper, Math.max(k.lower, price));
+    // 自分の約定も、その日の出来高・売買代金に加わる（市場の出来高の枠には数えない）
+    k.vol += q; k.liqV += q; k.turn += q * price;
+    const lc = k.candles && k.candles.length ? k.candles[k.candles.length - 1] : null; if (lc && typeof lc.v === 'number') lc.v += q;
     return { q, price };
   }
   /* ---- 保有割合：発行済株式数（自己株式を除く）の1/3までしか買えない ---- */
@@ -4196,7 +4214,7 @@ class Account {
     this.rev++;
     const side = o.side === 'buy' ? '買い' : '売り', n = (x) => x.toLocaleString('ja-JP');
     if (!full) {
-      if (first) this.events.push({ kind: 'fill', text: '一部約定：' + o.name + ' ' + side + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは出来高に応じて順次約定します。' });
+      if (first) this.events.push({ kind: 'fill', text: '一部約定：' + o.name + ' ' + side + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは、指値の範囲で順次約定します。' });
     } else if (!first) {
       this.events.push({ kind: 'fill', text: '約定完了：' + o.name + ' ' + side + ' 合計 ' + n(o.filled) + '株、平均 ' + (Math.round(o.filledAmt / o.filled * 10) / 10).toLocaleString('ja-JP') + '円（' + yenText(o.filledAmt) + '）' });
     } else {
@@ -4477,7 +4495,7 @@ class Account {
     const kind = o.operation === 'open' ? (o.side === 'buy' ? '買建' : '売建') : (o.side === 'buy' ? '返済買' : '返済売'), n = (x) => x.toLocaleString('ja-JP');
     const head = forced ? '信用強制決済：' : '信用約定：';
     if (!full) {
-      if (first) this.events.push({ kind: 'credit', text: '信用一部約定：' + o.name + ' ' + kind + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは出来高に応じて順次約定します。' });
+      if (first) this.events.push({ kind: 'credit', text: '信用一部約定：' + o.name + ' ' + kind + ' ' + n(fq) + '株（注文 ' + n(o.origQty) + '株）。残りは、指値の範囲で順次約定します。' });
     } else if (!first) {
       this.events.push({ kind: 'credit', text: '信用約定完了：' + o.name + ' ' + kind + ' 合計 ' + n(o.filled) + '株、平均 ' + (Math.round(o.filledAmt / o.filled * 10) / 10).toLocaleString('ja-JP') + '円（' + yenText(o.filledAmt) + '）' });
     } else {
@@ -6277,7 +6295,8 @@ class Account {
     $('o-units').textContent = Number.isInteger(q) && q > 0 && q % UNIT === 0 ? '＝ ' + nf0.format(q / UNIT) + '単元（' + UNIT + '株が1単元）' : UNIT + '株が1単元です。数量は' + UNIT + '株単位で入力します。';
     if (Number.isInteger(q) && q > 0 && q % UNIT === 0 && k.adv > 0) {
       const rt = q / k.adv, first = Math.max(UNIT, Math.floor(k.adv * LIQ.touch / UNIT) * UNIT);
-      if (q > first) $('o-units').textContent += '／1日の平均出来高の ' + (rt >= 0.1 ? (rt * 100).toFixed(0) : (rt * 100).toFixed(1)) + '%：一度には約定せず、出来高に応じて順次約定します' + (rt >= 0.05 ? '（価格への影響も大きめです）' : '');
+      if (q > first) { const mv = LIQ.impactK * Math.max(0.3, k.d || 1) * (Math.sqrt(rt) + rt * Math.sqrt(rt));
+        $('o-units').textContent += '／1日の平均出来高の ' + (rt >= 0.1 ? (rt * 100).toFixed(0) : (rt * 100).toFixed(1)) + '%：買い上がり（売り下がり）ながら約定します。想定の価格の動き 約' + mv.toFixed(1) + '%（指値・成行の範囲内）'; }
     }
     const mx = maxQtyFor(k);
     const mb = $('o-max');
